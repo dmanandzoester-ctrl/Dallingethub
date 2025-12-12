@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Jungle Jump — Mini Platformer</title>
+<style>
+  :root{
+    --bg-top:#88c28f;
+    --bg-bottom:#18472a;
+    --accent:#ffd24a;
+    --panel:#16221a;
+  }
+  html,body{height:100%;margin:0;font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;}
+  body{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background: linear-gradient(180deg,var(--bg-top) 0%, rgba(136,194,143,0.6) 30%, rgba(24,71,42,1) 100%);
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+  }
+  #game-wrap{
+    width: 960px;
+    max-width:95vw;
+    height: 540px;
+    max-height:85vh;
+    position:relative;
+    border-radius:12px;
+    overflow:hidden;
+    box-shadow: 0 18px 50px rgba(12,35,18,0.55), inset 0 -8px 30px rgba(0,0,0,0.15);
+    background: linear-gradient(180deg, rgba(0,0,0,0.0), rgba(0,0,0,0.06));
+  }
+  canvas{display:block;width:100%;height:100%;background:transparent;}
+  /* HUD */
+  .hud{
+    position:absolute; left:12px; top:12px; z-index:40;
+    background:rgba(10,18,14,0.5);
+    color:#fff; padding:8px 12px; border-radius:8px; font-weight:600;
+    backdrop-filter: blur(4px);
+  }
+  .hud .score{color:var(--accent); margin-right:12px;}
+  .hud .lives{color:#ff6b6b;}
+  .controls{
+    position:absolute; right:12px; top:12px; z-index:40; display:flex; gap:8px;
+  }
+  .btn{
+    background:rgba(255,255,255,0.06); color:#fff; border:none; padding:8px 10px; border-radius:8px; cursor:pointer;
+    font-weight:600; backdrop-filter: blur(4px);
+  }
+  .overlay-controls{
+    position:absolute; left:8px; bottom:16px; z-index:50; display:flex; gap:6px; align-items:flex-end;
+    pointer-events:none;
+  }
+  .touch-btn{
+    width:74px; height:74px; border-radius:12px; background:rgba(255,255,255,0.06);
+    display:flex; align-items:center; justify-content:center; font-size:22px; color:white;
+    pointer-events:auto;
+    user-select:none;
+    -webkit-user-select:none;
+  }
+  .touch-left, .touch-right {opacity:0.9}
+  .touch-jump{width:90px;height:90px;border-radius:18px;background:rgba(255,210,74,0.95); color:#123214; font-weight:800;}
+  .center-ui{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:60; text-align:center; color:#fff; padding:12px;}
+  .center-ui h1{margin:0;font-size:28px; letter-spacing:0.5px;}
+  .center-ui p{margin:8px 0 12px; color:#dfeee0;}
+  .center-ui .big-btn{margin-top:8px;padding:10px 16px;border-radius:10px;background:var(--accent); color:#123214; font-weight:800; border:none; cursor:pointer;}
+  /* Small screens: make touch controls visible */
+  @media (max-width:800px){
+    .overlay-controls{left:10px; bottom:10px;}
+    .controls{display:none;}
+  }
+</style>
+</head>
+<body>
+  <div id="game-wrap">
+    <canvas id="game"></canvas>
+
+    <div class="hud" id="hud">
+      <span class="score">🍌 Score: <span id="score">0</span></span>
+      <span class="lives">❤️ Lives: <span id="lives">3</span></span>
+    </div>
+
+    <div class="controls" id="desktop-controls">
+      <button class="btn" id="pauseBtn">Pause</button>
+      <button class="btn" id="restartBtn">Restart</button>
+    </div>
+
+    <div class="overlay-controls" id="touchControls" style="display:none;">
+      <div style="display:flex;gap:6px;align-items:center;">
+        <div class="touch-btn touch-left" id="touchLeft">◀</div>
+        <div class="touch-btn touch-right" id="touchRight">▶</div>
+      </div>
+      <div style="width:12px"></div>
+      <div class="touch-btn touch-jump" id="touchJump">JUMP</div>
+    </div>
+
+    <div class="center-ui" id="centerUi">
+      <h1>Jungle Jump</h1>
+      <p>Use ← → or A/D to move. Space or ↑ to jump. Collect bananas, avoid snakes!</p>
+      <button class="big-btn" id="startBtn">Start Adventure</button>
+    </div>
+  </div>
+
+<script>
+/* Jungle Jump — Mini Platformer
+   - Single-file
+   - Paste into index.html and run
+*/
+
+// Canvas setup and scaling (internal resolution for crispness)
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+let WIDTH = 960, HEIGHT = 540;
+canvas.width = WIDTH;
+canvas.height = HEIGHT;
+
+// adapt to container while preserving aspect ratio using CSS (handled by styles)
+const gameWrap = document.getElementById('game-wrap');
+
+// Game state
+let keys = {};
+let touch = { left:false, right:false, jump:false };
+let running = false;
+let paused = false;
+let lastTime = 0;
+let score = 0;
+let lives = 3;
+
+// World / camera
+let cameraX = 0;
+const levelWidth = 4000; // width of the entire level
+
+// Player
+const player = {
+  x: 100, y: 0, w: 40, h: 56,
+  vx: 0, vy: 0,
+  speed: 260,
+  jumpPower: 520,
+  grounded: false,
+  color: '#ffe7b3',
+  invuln: 0, // invulnerability timer after hit
+};
+
+// Physics
+const GRAVITY = 1600;
+const FRICTION = 0.9;
+const MAX_FALL = 900;
+
+// Platforms: each is {x,y,w,h,type, vx (optional)}
+let platforms = [];
+
+// Bananas collectible
+let bananas = []; // each {x,y,w,h, collected}
+
+// Enemies (snakes): {x,y,w,h, dir, speed, rangeX}
+let enemies = [];
+
+// Moving platforms examples
+function createLevel(){
+  platforms = [];
+  bananas = [];
+  enemies = [];
+
+  // ground
+  platforms.push({x:0,y:HEIGHT-64,w:levelWidth+400,h:64});
+  // series of platforms
+  platforms.push({x:250,y:HEIGHT-160,w:180,h:18});
+  platforms.push({x:520,y:HEIGHT-240,w:160,h:18});
+  platforms.push({x:760,y:HEIGHT-200,w:120,h:18});
+  platforms.push({x:980,y:HEIGHT-260,w:220,h:18});
+  platforms.push({x:1350,y:HEIGHT-180,w:200,h:18});
+  platforms.push({x:1650,y:HEIGHT-300,w:200,h:18});
+  platforms.push({x:2000,y:HEIGHT-220,w:180,h:18});
+  platforms.push({x:2350,y:HEIGHT-160,w:160,h:18});
+  platforms.push({x:2650,y:HEIGHT-260,w:220,h:18});
+  platforms.push({x:3050,y:HEIGHT-200,w:160,h:18});
+  platforms.push({x:3400,y:HEIGHT-240,w:260,h:18});
+  // moving platform
+  platforms.push({x:1200,y:HEIGHT-320,w:140,h:18, type:'move', vx:90, rangeX:[1200,1400]});
+  platforms.push({x:2900,y:HEIGHT-320,w:140,h:18, type:'move', vx:70, rangeX:[2900,3100]});
+
+  // bananas placed along level
+  for(let i=0;i<28;i++){
+    let px = 200 + i*120 + Math.floor(Math.random()*60);
+    let py = HEIGHT - 120 - (Math.floor(Math.random()*6) * 30);
+    bananas.push({x:px,y:py,w:18,h:22, collected:false});
+  }
+
+  // enemies (patrolling snakes)
+  enemies.push({x:680,y:HEIGHT-80,w:60,h:24, dir:1, speed:80, rangeX:[640,820]});
+  enemies.push({x:1520,y:HEIGHT-80,w:60,h:24, dir:1, speed:60, rangeX:[1500,1800]});
+  enemies.push({x:2750,y:HEIGHT-80,w:60,h:24, dir:1, speed:90, rangeX:[2700,2950]});
+
+  // finish line (a tall tree stump) marker
+  platforms.push({x:levelWidth-160,y:HEIGHT-220,w:20,h:220, type:'finish'});
+}
+
+// Input handling
+window.addEventListener('keydown', (e) => {
+  if(e.key === 'Escape') togglePause();
+  keys[e.key.toLowerCase()] = true;
+});
+window.addEventListener('keyup', (e) => {
+  keys[e.key.toLowerCase()] = false;
+});
+
+// Mobile touch controls
+const touchControls = document.getElementById('touchControls');
+const touchLeft = document.getElementById('touchLeft');
+const touchRight = document.getElementById('touchRight');
+const touchJump = document.getElementById('touchJump');
+
+['touchstart','mousedown'].forEach(ev=>{
+  touchLeft.addEventListener(ev, (e)=>{ e.preventDefault(); touch.left=true; }, {passive:false});
+  touchRight.addEventListener(ev, (e)=>{ e.preventDefault(); touch.right=true; }, {passive:false});
+  touchJump.addEventListener(ev, (e)=>{ e.preventDefault(); touch.jump=true; }, {passive:false});
+});
+['touchend','mouseup','touchcancel','mouseleave'].forEach(ev=>{
+  touchLeft.addEventListener(ev, (e)=>{ e.preventDefault(); touch.left=false; }, {passive:false});
+  touchRight.addEventListener(ev, (e)=>{ e.preventDefault(); touch.right=false; }, {passive:false});
+  touchJump.addEventListener(ev, (e)=>{ e.preventDefault(); touch.jump=false; }, {passive:false});
+});
+
+// Buttons
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('restartBtn').addEventListener('click', resetGame);
+document.getElementById('pauseBtn').addEventListener('click', togglePause);
+
+// Resize canvas to element size but keep internal resolution constants
+function resize(){
+  const rect = gameWrap.getBoundingClientRect();
+  canvas.style.width = rect.width + 'px';
+  canvas.style.height = rect.height + 'px';
+}
+window.addEventListener('resize', resize);
+resize();
+
+// Helper collisions
+function rectIntersect(a,b){
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+// reset
+function resetGame(){
+  score = 0;
+  lives = 3;
+  player.x = 100; player.y = 0; player.vx = 0; player.vy = 0;
+  player.invuln = 0;
+  cameraX = 0;
+  createLevel();
+  updateHUD();
+  if(!running) startGame();
+}
+
+// start
+function startGame(){
+  document.getElementById('centerUi').style.display = 'none';
+  // show touch controls if small screen
+  if(window.innerWidth < 800) touchControls.style.display = 'flex';
+  running = true;
+  paused = false;
+  lastTime = performance.now();
+  requestAnimationFrame(loop);
+}
+
+// pause
+function togglePause(){
+  paused = !paused;
+  document.getElementById('pauseBtn').textContent = paused ? 'Resume' : 'Pause';
+  if(!paused) lastTime = performance.now();
+}
+
+// update HUD
+function updateHUD(){
+  document.getElementById('score').textContent = score;
+  document.getElementById('lives').textContent = lives;
+}
+
+// Game loop
+function loop(t){
+  if(!running) return;
+  const dt = Math.min(0.035, (t - lastTime) / 1000);
+  lastTime = t;
+  if(!paused){
+    update(dt);
+  }
+  render();
+  if(lives > 0){
+    requestAnimationFrame(loop);
+  } else {
+    // game over
+    running = false;
+    showGameOver();
+  }
+}
+
+// Update world
+function update(dt){
+  // input
+  let left = keys['arrowleft'] || keys['a'] || touch.left;
+  let right = keys['arrowright'] || keys['d'] || touch.right;
+  let jumpPressed = keys[' '] || keys['arrowup'] || keys['w'] || touch.jump;
+
+  // horizontal movement
+  if(left && !right){
+    player.vx = -player.speed;
+  } else if(right && !left){
+    player.vx = player.speed;
+  } else {
+    player.vx = 0;
+  }
+
+  // jump
+  if(jumpPressed && player.grounded){
+    player.vy = -player.jumpPower;
+    player.grounded = false;
+    // small anti-double-jump guard: require key release
+    keys[' '] = false;
+    keys['arrowup'] = false;
+    keys['w'] = false;
+  }
+
+  // physics
+  player.vy += GRAVITY * dt;
+  if(player.vy > MAX_FALL) player.vy = MAX_FALL;
+
+  // move player
+  let nextX = player.x + player.vx * dt;
+  let nextY = player.y + player.vy * dt;
+
+  // apply platform physics & collisions
+  player.grounded = false;
+
+  // update moving platforms
+  platforms.forEach(p=>{
+    if(p.type === 'move'){
+      p.x += p.vx * dt;
+      if(p.x < p.rangeX[0]) { p.x = p.rangeX[0]; p.vx *= -1; }
+      if(p.x + p.w > p.rangeX[1]) { p.x = p.rangeX[1] - p.w; p.vx *= -1; }
+    }
+  });
+
+  // Check Y collisions: simulate vertical movement then horizontal
+  // Vertical
+  let playerVRect = { x:player.x, y:nextY, w:player.w, h:player.h };
+  for(let p of platforms){
+    // ignore finish marker shape for collision
+    if(p.type === 'finish') continue;
+    if(rectIntersect(playerVRect, p)){
+      // landing on top
+      if(player.vy > 0 && (player.y + player.h) <= p.y + 8){
+        nextY = p.y - player.h;
+        player.vy = 0;
+        player.grounded = true;
+      }
+      // hitting bottom (e.g., head bump)
+      else if(player.vy < 0 && (player.y >= p.y + p.h - 8)){
+        nextY = p.y + p.h;
+        player.vy = 0;
+      }
+    }
+  }
+
+  // Horizontal collisions
+  let playerHRect = { x:nextX, y:nextY, w:player.w, h:player.h };
+  for(let p of platforms){
+    if(p.type === 'finish') continue;
+    if(rectIntersect(playerHRect, p)){
+      // moving right into wall
+      if(player.vx > 0 && (player.x + player.w) <= p.x + 8){
+        nextX = p.x - player.w;
+      } else if(player.vx < 0 && player.x >= p.x + p.w - 8){
+        nextX = p.x + p.w;
+      }
+      player.vx = 0;
+    }
+  }
+
+  // apply movement
+  player.x = nextX;
+  player.y = nextY;
+
+  // camera follows player, clamped to level
+  cameraX = Math.max(0, Math.min(levelWidth - WIDTH/1.2, player.x - WIDTH/3));
+
+  // banana collection
+  for(let b of bananas){
+    if(!b.collected){
+      if(rectIntersect({x:player.x,y:player.y,w:player.w,h:player.h}, b)){
+        b.collected = true;
+        score += 5;
+        updateHUD();
+      }
+    }
+  }
+
+  // enemy movement & collisions
+  for(let e of enemies){
+    e.x += e.dir * e.speed * dt;
+    if(e.x < e.rangeX[0] || e.x > e.rangeX[1]) e.dir *= -1;
+
+    // collision with player
+    if(rectIntersect({x:player.x,y:player.y,w:player.w,h:player.h}, e)){
+      if(player.invuln <= 0){
+        // knockback
+        lives -= 1;
+        updateHUD();
+        player.invuln = 1.2; // 1.2s invuln
+        player.vy = -220;
+        // small push back
+        player.x += e.dir * -40;
+      }
+    }
+  }
+
+  // reduce invuln timer
+  if(player.invuln > 0){
+    player.invuln -= dt;
+  }
+
+  // falling off bottom -> lose life and respawn
+  if(player.y > HEIGHT + 200){
+    lives -= 1;
+    updateHUD();
+    respawn();
+  }
+
+  // winning: reach finish line x
+  if(player.x > levelWidth - 200){
+    // show win screen & stop game
+    running = false;
+    showWin();
+  }
+}
+
+// respawn player at safe spot
+function respawn(){
+  player.x = Math.max(100, player.x - 200);
+  player.y = -40;
+  player.vx = 0; player.vy = 0;
+  player.invuln = 1;
+  cameraX = Math.max(0, Math.min(levelWidth - WIDTH/1.2, player.x - WIDTH/3));
+  if(lives <= 0){ running = false; showGameOver(); }
+}
+
+// Render everything (parallax background, platforms, player, hud elements)
+function render(){
+  // clear (transparent since parent has gradient)
+  ctx.clearRect(0,0,WIDTH,HEIGHT);
+
+  // draw parallax sky & distant mountains/trees
+  // layer 1: far mist
+  drawParallaxLayer(0.2, drawFarSilhouette);
+  drawParallaxLayer(0.5, drawMidTrees);
+  drawParallaxLayer(0.85, drawForegroundLeaves);
+
+  // ground shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.fillRect(-cameraX, HEIGHT-64, levelWidth+400, 64);
+
+  // platforms
+  for(let p of platforms){
+    if(p.type === 'finish'){
+      // draw finish stump
+      const fx = p.x - cameraX;
+      if(fx + p.w < -200 || fx > WIDTH + 200) continue;
+      // stump base
+      roundRect(ctx, fx, p.y, p.w, p.h, 8, '#5a3b1b', '#3b2a17');
+      // vine flag
+      ctx.fillStyle = '#2a6b2a';
+      ctx.fillRect(fx - 10, p.y - 40, 6, 40);
+      ctx.fillStyle = '#ffd24a';
+      ctx.beginPath();
+      ctx.moveTo(fx - 4, p.y - 36);
+      ctx.lineTo(fx + 10, p.y - 28);
+      ctx.lineTo(fx - 4, p.y - 20);
+      ctx.closePath();
+      ctx.fill();
+      continue;
+    }
+    const x = p.x - cameraX;
+    if(x + p.w < -200 || x > WIDTH + 200) continue;
+
+    // different visuals for moving platform
+    if(p.type === 'move'){
+      roundRect(ctx, x, p.y, p.w, p.h, 6, '#6b8b5b', '#475c3f');
+      // vine ropes
+      ctx.fillStyle = 'rgba(40,60,30,0.7)';
+      ctx.fillRect(x+6, p.y - 12, 4, 12);
+      ctx.fillRect(x + p.w - 10, p.y - 12, 4, 12);
+    } else {
+      roundRect(ctx, x, p.y, p.w, p.h, 6, '#7ba36f', '#56794f');
+    }
+  }
+
+  // bananas
+  for(let b of bananas){
+    if(b.collected) continue;
+    const bx = b.x - cameraX, by = b.y;
+    if(bx + b.w < -100 || bx > WIDTH + 100) continue;
+    drawBanana(bx, by);
+  }
+
+  // enemies (snakes)
+  for(let e of enemies){
+    const ex = e.x - cameraX, ey = e.y;
+    if(ex + e.w < -200 || ex > WIDTH + 200) continue;
+    drawSnake(ex, ey, e.dir);
+  }
+
+  // player (simple character with parachute cap)
+  const px = player.x - cameraX, py = player.y;
+  drawPlayer(px, py, player);
+
+  // if invulnerable flash
+  if(player.invuln > 0){
+    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    ctx.fillRect(0,0,WIDTH,HEIGHT);
+  }
+
+  // If paused overlay
+  if(paused){
+    ctx.fillStyle = 'rgba(6,10,6,0.4)';
+    ctx.fillRect(0,0,WIDTH,HEIGHT);
+    ctx.fillStyle = '#fff';
+    ctx.font = '28px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('PAUSED', WIDTH/2, HEIGHT/2);
+  }
+}
+
+// ---------- Drawing helpers ----------
+function drawParallaxLayer(speedFactor, drawFn){
+  ctx.save();
+  ctx.translate(-cameraX * (1 - speedFactor), 0);
+  drawFn();
+  ctx.restore();
+}
+
+function drawFarSilhouette(){
+  // distant mountain silhouettes / treeline
+  const grad = ctx.createLinearGradient(0,0,0,HEIGHT);
+  grad.addColorStop(0, 'rgba(20,40,25,0.12)');
+  grad.addColorStop(1, 'rgba(8,20,10,0.22)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(-400, 0, levelWidth + 1000, HEIGHT*0.7);
+
+  // blobs of darker foliage
+  ctx.fillStyle = 'rgba(5,35,20,0.14)';
+  for(let i=0;i<30;i++){
+    let gx = i*140;
+    ctx.beginPath();
+    ctx.ellipse(gx, HEIGHT*0.55 - (i%3)*10, 220 - (i%5)*30, 80 + (i%4)*10, 0, 0, Math.PI*2);
+    ctx.fill();
+  }
+}
+
+function drawMidTrees(){
+  // trunks silhouette
+  ctx.fillStyle = 'rgba(8,35,18,0.95)';
+  for(let i=-2;i<30;i++){
+    const tx = i*220 + 30;
+    ctx.fillRect(tx, HEIGHT*0.35, 18, HEIGHT*0.45);
+    // big foliage
+    ctx.beginPath();
+    ctx.ellipse(tx + 10, HEIGHT*0.34, 100, 70, 0, 0, Math.PI*2);
+    ctx.fill();
+  }
+}
+
+function drawForegroundLeaves(){
+  // foreground leaves swaying
+  for(let i=0;i<60;i++){
+    const lx = i*70 - (cameraX*0.3 % 80);
+    const ly = 40 + (i%6)*10;
+    ctx.beginPath();
+    ctx.ellipse(lx, ly, 50, 18, Math.sin((i+cameraX/120)/3), 0, Math.PI*2);
+    ctx.fillStyle = i%2===0 ? 'rgba(20,90,40,0.85)' : 'rgba(12,70,32,0.85)';
+    ctx.fill();
+  }
+}
+
+function roundRect(ctx, x,y,w,h,r, fillCol, strokeCol){
+  ctx.fillStyle = fillCol;
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+  ctx.fill();
+  if(strokeCol){
+    ctx.strokeStyle = strokeCol;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+}
+
+function drawBanana(x,y){
+  // small banana emoji style
+  ctx.save();
+  ctx.translate(x+8,y+8);
+  ctx.rotate(-0.35);
+  // peel
+  ctx.fillStyle = '#ffd24a';
+  ctx.beginPath();
+  ctx.ellipse(0,0,8,12,0,0,Math.PI*2);
+  ctx.fill();
+  // darker curve
+  ctx.strokeStyle = '#d8a500';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-3,-5);
+  ctx.quadraticCurveTo(2,-1,4,6);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawSnake(x,y,dir){
+  ctx.save();
+  ctx.translate(x,y);
+  // body
+  ctx.fillStyle = '#4b6f3b';
+  ctx.beginPath();
+  ctx.ellipse(0,10,30,12,0,0,Math.PI*2);
+  ctx.fill();
+  // head
+  ctx.beginPath();
+  ctx.ellipse(30*dir,10,10,8,0,0,Math.PI*2);
+  ctx.fill();
+  // tongue
+  ctx.strokeStyle = '#c21';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(30*dir + (3*dir),10);
+  ctx.lineTo(30*dir + (10*dir),6);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawPlayer(x,y, p){
+  // shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  ctx.beginPath();
+  ctx.ellipse(x + p.w/2, y + p.h + 6, p.w*0.6, 8, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // body
+  roundRect(ctx, x, y + 14, p.w, p.h - 14, 8, '#6fd4a4', '#3f7a58');
+
+  // head
+  ctx.fillStyle = p.color;
+  ctx.beginPath();
+  ctx.ellipse(x + p.w/2, y + 10, 14, 12, 0, 0, Math.PI*2);
+  ctx.fill();
+  // eyes
+  ctx.fillStyle = '#123214';
+  ctx.beginPath();
+  ctx.ellipse(x + p.w/2 - 6, y + 9, 2.8, 3, 0,0,Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(x + p.w/2 + 6, y + 9, 2.8, 3, 0,0,Math.PI*2);
+  ctx.fill();
+  // little vine hat
+  ctx.fillStyle = '#2f6c2f';
+  ctx.fillRect(x + p.w/2 - 16, y - 4, 32, 6);
+}
+
+// Show win screen
+function showWin(){
+  // draw overlay
+  ctx.fillStyle = 'rgba(6,10,6,0.7)';
+  ctx.fillRect(0,0,WIDTH,HEIGHT);
+  ctx.fillStyle = '#fff';
+  ctx.font = '36px system-ui';
+  ctx.textAlign = 'center';
+  ctx.fillText('🎉 You made it through the Jungle!', WIDTH/2, HEIGHT/2 - 24);
+  ctx.font = '20px system-ui';
+  ctx.fillText('Score: ' + score + '   |   Lives left: ' + lives, WIDTH/2, HEIGHT/2 + 12);
+
+  // show center UI to restart
+  const ui = document.getElementById('centerUi');
+  ui.style.display = 'block';
+  ui.querySelector('h1').textContent = 'You Win!';
+  ui.querySelector('p').textContent = 'Brave explorer — the jungle bows to you.';
+  const btn = ui.querySelector('#startBtn');
+  btn.textContent = 'Play Again';
+  btn.onclick = () => { resetGame(); ui.style.display='none'; };
+}
+
+// Show game over
+function showGameOver(){
+  ctx.fillStyle = 'rgba(6,10,6,0.7)';
+  ctx.fillRect(0,0,WIDTH,HEIGHT);
+  ctx.fillStyle = '#fff';
+  ctx.font = '36px system-ui';
+  ctx.textAlign = 'center';
+  ctx.fillText('💀 Game Over', WIDTH/2, HEIGHT/2 - 20);
+  ctx.font = '18px system-ui';
+  ctx.fillText('Final score: ' + score, WIDTH/2, HEIGHT/2 + 12);
+
+  const ui = document.getElementById('centerUi');
+  ui.style.display = 'block';
+  ui.querySelector('h1').textContent = 'Game Over';
+  ui.querySelector('p').textContent = 'The jungle was too wild this time. Try again?';
+  const btn = ui.querySelector('#startBtn');
+  btn.textContent = 'Restart';
+  btn.onclick = () => { resetGame(); ui.style.display='none'; };
+}
+
+// initialization
+createLevel();
+updateHUD();
+
+// show touch controls if small initially
+if(window.innerWidth < 800){
+  touchControls.style.display = 'flex';
+} else {
+  touchControls.style.display = 'none';
+}
+
+// enable restart on load center button click
+document.getElementById('startBtn').onclick = () => { resetGame(); document.getElementById('centerUi').style.display = 'none'; };
+
+// auto-pause when tab hidden
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden){ paused = true; document.getElementById('pauseBtn').textContent = 'Resume'; }
+});
+
+</script>
+</body>
+</html>
+
+
+

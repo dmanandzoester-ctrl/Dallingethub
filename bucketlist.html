@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Bucket List</title>
+
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Poppins", sans-serif;
+            background: #0f0f0f;
+            color: #fff;
+            line-height: 1.6;
+        }
+
+        /* Header */
+        header {
+            background: url("https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1950&q=80") center/cover no-repeat;
+            height: 60vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            color: white;
+            padding: 2rem;
+        }
+
+        header h1 {
+            font-size: 4rem;
+            text-transform: uppercase;
+            backdrop-filter: blur(5px);
+        }
+
+        /* Sections */
+        .container {
+            max-width: 1100px;
+            margin: auto;
+            padding: 2rem;
+        }
+
+        .item {
+            background: #1b1b1b;
+            padding: 2rem;
+            margin: 2rem 0;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(255,255,255,0.1);
+        }
+
+        .item img {
+            width: 45%;
+            border-radius: 12px;
+        }
+
+        .item h2 {
+            margin-bottom: 1rem;
+            color: #ffbb00;
+        }
+
+        @media (max-width: 768px) {
+            .item {
+                flex-direction: column;
+            }
+            
+            .item img {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>My Epic Bucket List</h1>
+    </header>
+
+    <div class="container">
+
+        <!-- Ultra Marathon -->
+        <div class="item">
+            <img src="..//html/Images/70fe4a8-d66-d4f5-a455-fec4eec2f73d_Ultra_marathon.webp" alt="Ultra Marathon">
+            <div>
+                <h2>Run 100 Miles (Ultra Marathon)</h2>
+                <p>
+                    A test of mental and physical endurance — the ultimate challenge. Completing a 100-mile ultra marathon 
+                    represents pushing beyond boundaries, embracing discomfort, and discovering your true limits.
+                </p>
+                <ol><br>
+                    <li>How I will obtain this goal</li>
+                    <ul><li>Build a solid running base with consistent weekly mileage.</li>
+                    <li>Incorporate long runs and back-to-back long run weekends.</li>
+                    <li>Focus on nutrition and hydration strategies during training.</li>
+                    <li>Include strength training and cross-training to prevent injuries.</li>
+                    <li>Taper properly before</ul>
+                    
+                </ol>
+            </div>
+        </div>
+
+        <!-- World Cup Final -->
+        <div class="item">
+            <img src="https://images.unsplash.com/photo-1522770179533-24471fcdba45?auto=format&fit=crop&w=1200&q=80" alt="World Cup Final">
+            <div>
+                <h2>Attend a World Cup Final</h2>
+                <p>
+                    The pinnacle of global sports energy. Billions watch — but being there in the stadium, 
+                    feeling the roar, the suspense, the unity of nations… nothing compares.
+                </p>
+                <ol><br>
+                    <li>How I will obtain this goal</li>
+                    <ul><li>Research and select the World Cup event you want to attend.</li>
+                    <li>Plan your budget, including travel, accommodation, and ticket costs.</li>
+                    <li>Apply for tickets through official channels as soon as they become available.</li>
+                    <li>Arrange travel and accommodation well in advance to secure the best options.</li>
+                    <li>Familiarize yourself with the host country's culture and logistics for a smooth experience.</li></ul>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Sailboat Trip -->
+        <div class="item">
+            <img src="https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&w=1200&q=80" alt="Sailboat Trip">
+            <div>
+                <h2>Extended Sailboat Trip</h2>
+                <p>
+                    Open ocean, complete freedom, and a deeper connection with nature. 
+                    A long sailboat journey means learning self-reliance, mastering the winds, 
+                    and embracing life at its rawest.
+                </p>
+                <ol><br>
+                    <li>How I will obtain this goal</li>
+                    <ul><li>Obtain necessary sailing certifications and experience.</li>
+                    <li>Plan your route, including stops and provisions needed.</li>
+                    <li>Prepare your sailboat for long-term travel, ensuring all systems are functional.</li>
+                    <li>Gather essential supplies, including food, water, and safety equipment.</li>
+                    <li>Inform friends or family about your itinerary for safety purposes.</li></ul>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Kayak Cape of Africa -->
+        <div class="item">
+            <img src="..//html/Images/fd0464e4-city-78715-15d32b2ef22.jpg" alt="Kayak Africa">
+            <div>
+                <h2>Kayak the Cape of Africa</h2>
+                <p>
+                    A wild expedition at the meeting point of oceans — unpredictable, beautiful, and powerful. 
+                    Kayaking the Cape is both a daring adventure and a spiritual journey.
+                </p>
+                <ol><br>
+                    <li>How I will obtain this goal</li>
+                    <ul><li>Research the best time of year for kayaking the Cape of Africa.</li>
+                    <li>Acquire a suitable kayak and necessary gear for long-distance paddling.</li>
+                    <li>Train physically to build endurance and strength for the journey.</li>
+                    <li>Plan your route, including potential stopover points for rest and resupply.</li>
+                    <li>Ensure you have safety measures in place, including communication devices and emergency plans.</li></ul>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Mt. Rainier -->
+        <div class="item">
+            <img src="..//html/Images/muir-hero.jpg" alt="Mt Rainier">
+            <div>
+                <h2>Summit Mt. Rainier</h2>
+                <p>
+                    A massive, iconic glacier-covered volcano. Summiting Mt. Rainier means endurance, skill, teamwork, 
+                    and standing atop one of Americas most legendary peaks.
+                </p>
+                <ol><br>
+                    <li>How I will obtain this goal</li>
+                    <ul><li>Gain experience in mountaineering and glacier travel.</li>
+                    <li>Join a guided expedition or hire a certified guide for the climb.</li>
+                    <li>Train physically to build strength, endurance, and acclimatization to altitude.</li>
+                    <li>Prepare necessary gear, including clothing, climbing equipment, and safety gear.</li>
+                    <li>Plan your ascent carefully, considering weather conditions and route options.</li></ul>
+                </ol>
+            </div>
+        </div>
+
+    </div>
+<iframe 
+    width="560" 
+    height="315" 
+    src="https://www.youtube.com/embed/UWnNjn1pki4" 
+    title="YouTube video player" 
+    frameborder="0" 
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+    allowfullscreen>
+</iframe>
+
+<!-- Tableau Embed -->
+<div class='tableauPlaceholder' id='viz1765578762550' style='position: relative'>
+    <noscript>
+        <a href='#'>
+            <img alt='WEIGHT (Kgs)' 
+                 src='https://public.tableau.com/static/images/Se/SeaFoodSalesDashboard/SeaFoodDashboard/1_rss.png' 
+                 style='border: none' />
+        </a>
+    </noscript>
+
+    <object class='tableauViz' style='display:none;'>
+        <param name='host_url' value='https%3A%2F%2Fpublic.tableau.com%2F' />
+        <param name='embed_code_version' value='3' />
+        <param name='site_root' value='' />
+        <param name='name' value='SeaFoodSalesDashboard/SeaFoodDashboard' />
+        <param name='tabs' value='no' />
+        <param name='toolbar' value='yes' />
+        <param name='static_image' value='https://public.tableau.com/static/images/Se/SeaFoodSalesDashboard/SeaFoodDashboard/1.png' />
+        <param name='animate_transition' value='yes' />
+        <param name='display_static_image' value='yes' />
+        <param name='display_spinner' value='yes' />
+        <param name='display_overlay' value='yes' />
+        <param name='display_count' value='yes' />
+        <param name='language' value='en-US' />
+    </object>
+</div>
+
+<script type='text/javascript'>
+    var divElement = document.getElementById('viz1765578762550');
+    var vizElement = divElement.getElementsByTagName('object')[0];
+
+    if (divElement.offsetWidth > 800) {
+        vizElement.style.width = '1600px';
+        vizElement.style.height = '1002px';
+    } else if (divElement.offsetWidth > 500) {
+        vizElement.style.width = '1600px';
+        vizElement.style.height = '1002px';
+    } else {
+        vizElement.style.width = '100%';
+        vizElement.style.height = '2777px';
+    }
+
+    var scriptElement = document.createElement('script');
+    scriptElement.src = 'https://public.tableau.com/javascripts/api/viz_v1.js';
+    vizElement.parentNode.insertBefore(scriptElement, vizElement);
+</script>
+
+
+</body>
+</html>
